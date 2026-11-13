@@ -1,0 +1,12 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <Bundle Name="Apple Windows Mount" Manufacturer="Apple Windows Mount contributors"
+          Version="0.1.0" UpgradeCode="1DDB6751-46C6-446E-9B06-FE1CB9136229">
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication LicenseUrl="https://www.gnu.org/licenses/gpl-3.0.html" Theme="hyperlinkLicense" />
+    </BootstrapperApplication>
+    <Chain>
+      <MsiPackage Id="WinFsp" SourceFile="$(var.WinFspMsi)" Permanent="yes" Vital="yes" />
+      <MsiPackage Id="Application" SourceFile="$(var.AppMsi)" Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

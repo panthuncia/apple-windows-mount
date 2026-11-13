@@ -1,0 +1,48 @@
+name: Windows
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install verified WinFsp SDK and driver
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'winfsp.msi'
+          Invoke-WebRequest 'https://github.com/winfsp/winfsp/releases/download/v2.1/winfsp-2.1.25156.msi' -OutFile $package
+          if ((Get-FileHash $package).Hash -ne '073A70E00F77423E34BED98B86E600DEF93393BA5822204FAC57A29324DB9F7A') { throw 'WinFsp checksum mismatch' }
+          if ((Get-AuthenticodeSignature $package).Status -ne 'Valid') { throw 'WinFsp signature invalid' }
+          $setup = Start-Process msiexec.exe -ArgumentList @('/i', ('"' + $package + '"'), 'ADDLOCAL=ALL', '/quiet', '/norestart') -WindowStyle Hidden -PassThru -Wait
+          if ($setup.ExitCode -notin @(0, 3010)) { throw "WinFsp setup failed with $($setup.ExitCode)" }
+      - name: Prepare pinned vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP/vcpkg"
+          git -C "$env:RUNNER_TEMP/vcpkg" checkout 40f3c709db80acf154ac4b17a1f83c564ebd022e
+          & "$env:RUNNER_TEMP/vcpkg/bootstrap-vcpkg.bat" -disableMetrics
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "VCPKG_ROOT=$env:RUNNER_TEMP/vcpkg" >> $env:GITHUB_ENV
+      - name: Configure
+        run: cmake --preset windows-vs2022
+      - name: Build debug
+        run: cmake --build --preset vs2022-debug
+      - name: Test without USB hardware
+        run: ctest --preset windows-vs2022
+      - name: Build release
+        run: cmake --build --preset vs2022-release
+      - name: Package
+        run: cpack --config build/windows-vs2022/CPackConfig.cmake -C Release -B build/packages
+      - name: Build MSI and setup bundle
+        shell: pwsh
+        run: ./scripts/package.ps1 -BuildDirectory build/windows-vs2022
+      - name: Collect corresponding source
+        shell: pwsh
+        run: ./scripts/package-sources.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            build/packages/*.zip
+            installer/app/bin/Release/*.msi
+            installer/bundle/bin/Release/*.exe
+            build/distribution/sources/*

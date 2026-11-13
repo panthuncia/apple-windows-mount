@@ -1,0 +1,61 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Apple Windows Mount" Manufacturer="Apple Windows Mount contributors"
+           Version="0.1.0" UpgradeCode="8B4B193B-CE18-4ABC-A106-4184563D8074" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Apple Windows Mount is installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="WINFSPDIR">
+      <RegistrySearch Id="FindWinFsp" Root="HKLM" Key="SOFTWARE\WinFsp" Name="InstallDir" Type="raw" Bitness="always32" />
+    </Property>
+    <Launch Condition="Installed OR WINFSPDIR" Message="Install WinFsp 2.1 or later before installing Apple Windows Mount, or run the combined setup executable." />
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Apple Windows Mount">
+        <Directory Id="BINFOLDER" Name="bin">
+          <Component Id="DriverProgram" Guid="*">
+            <File Id="DriverExecutable" Source="$(var.StageDir)\bin\awm-driver.exe" KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="StateFolder" Name="AppleWindowsMount">
+        <Directory Id="DriverBackups" Name="DriverBackups">
+          <Component Id="DriverBackupDirectory" Guid="E302872A-6501-4BF1-A35B-EB6355350CD7">
+            <CreateFolder>
+              <PermissionEx Sddl="D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;BU)" />
+            </CreateFolder>
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationMenuFolder" Name="Apple Windows Mount">
+        <Component Id="ApplicationShortcut" Guid="*">
+          <Shortcut Id="TrayShortcut" Name="Apple Windows Mount" Target="[BINFOLDER]awm-host.exe" WorkingDirectory="BINFOLDER" />
+          <RemoveFolder Id="RemoveApplicationMenu" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\AppleWindowsMount" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+    <ComponentGroup Id="ApplicationFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.StageDir)\**">
+        <Exclude Files="$(var.StageDir)\bin\awm-driver.exe" />
+      </Files>
+    </ComponentGroup>
+    <Feature Id="Main" Title="Apple Windows Mount" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentRef Id="DriverProgram" />
+      <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DriverBackupDirectory" />
+    </Feature>
+    <CustomAction Id="StopController" Directory="BINFOLDER" ExeCommand="&quot;[BINFOLDER]awm.exe&quot; shutdown --json" Execute="immediate" Return="ignore" />
+    <CustomAction Id="RollbackDrivers" FileRef="DriverExecutable" ExeCommand="restore-connected --journal-dir &quot;[DriverBackups][ProductCode]&quot;" Execute="rollback" Impersonate="no" Return="ignore" />
+    <CustomAction Id="InstallDrivers" FileRef="DriverExecutable" ExeCommand="install-connected --journal-dir &quot;[DriverBackups][ProductCode]&quot;" Execute="deferred" Impersonate="no" Return="check" />
+    <CustomAction Id="RestoreDrivers" FileRef="DriverExecutable" ExeCommand="restore-connected --journal-dir &quot;[DriverBackups]&quot;" Execute="deferred" Impersonate="no" Return="check" />
+    <InstallExecuteSequence>
+      <Custom Action="StopController" Before="InstallInitialize" Condition="Installed" />
+      <Custom Action="RollbackDrivers" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="InstallDrivers" After="RollbackDrivers" Condition="NOT Installed" />
+      <Custom Action="RestoreDrivers" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot; AND NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>

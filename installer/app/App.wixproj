@@ -1,0 +1,8 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>AppleWindowsMount</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <StageDir Condition="'$(StageDir)' == ''">$(MSBuildProjectDirectory)\..\..\build\stage</StageDir>
+    <DefineConstants>StageDir=$(StageDir)</DefineConstants>
+  </PropertyGroup>
+</Project>

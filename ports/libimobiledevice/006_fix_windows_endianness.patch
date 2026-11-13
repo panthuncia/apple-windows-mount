@@ -1,0 +1,16 @@
+diff --git a/include/endianness.h b/include/endianness.h
+--- a/include/endianness.h
++++ b/include/endianness.h
+@@ -23,6 +23,12 @@
+ #endif
+ #endif
+ 
++/* MSVC does not define the GCC byte-order macros. Windows x64 is little
++ * endian. Without this default the 64-bit AFC fields are byte-swapped. */
++#if defined(_MSC_VER) && !defined(__BYTE_ORDER)
++#define __BYTE_ORDER __LITTLE_ENDIAN
++#endif
++
+ #ifndef be16toh
+ #if __BYTE_ORDER == __BIG_ENDIAN
+ #define be16toh(x) (x)

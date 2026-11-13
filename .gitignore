@@ -1,0 +1,7 @@
+/build/
+/.cache/
+/vcpkg_installed/
+/CMakeUserPresets.json
+*.user
+/installer/**/bin/
+/installer/**/obj/
